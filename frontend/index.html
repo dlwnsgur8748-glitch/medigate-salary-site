@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>메디게이트 급여 정리</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f5f7f9; --card:#ffffff; --line:#e5e7eb; --text:#0f172a; --muted:#64748b;
+    --brand:#0f766e; --brand-dark:#115e59; --accent:#0ea5e9;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--text); font-size:14px; line-height:1.55;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1220px;margin:0 auto;padding:0 20px}
+  header.top{background:linear-gradient(120deg,#0f172a 0%,#134e4a 100%);color:#fff}
+  header.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:22px;padding-bottom:22px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:20px}
+  h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.02em}
+  .sub{margin:2px 0 0;color:#a7c4c0;font-size:12.5px}
+  .header-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:10px;
+    border:1px solid var(--line);background:#fff;color:var(--text);font-size:13px;font-weight:600;
+    cursor:pointer;transition:.15s;white-space:nowrap;font-family:inherit;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(15,23,42,.08)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.primary:hover{background:var(--brand-dark)}
+  .btn.ghost{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);color:#fff}
+  .btn.ghost:hover{background:rgba(255,255,255,.16)}
+  .btn.small{height:32px;padding:0 10px;font-size:12px}
+  main{padding:24px 0 64px}
+  .cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px}
+  .card .label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .card .value{font-size:25px;font-weight:750;letter-spacing:-.02em;margin-top:6px;line-height:1.2}
+  .card .value .unit{font-size:13px;font-weight:600;color:var(--muted);margin-left:3px}
+  .card .hint{font-size:12px;color:var(--muted);margin-top:5px;min-height:18px}
+  .card.highlight{border-color:#99f6e4;background:linear-gradient(180deg,#f0fdfa,#fff)}
+  .filters{
+    display:grid;grid-template-columns:1.1fr 1.1fr .8fr .8fr 1.4fr auto;gap:10px;align-items:end;
+    background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:16px;
+  }
+  .field{min-width:0}
+  .field label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px}
+  select,input[type="search"]{
+    width:100%;height:38px;border:1px solid var(--line);border-radius:10px;padding:0 10px;
+    background:#fff;color:var(--text);font-size:13px;font-family:inherit;outline:none;
+  }
+  select:focus,input[type="search"]:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(15,118,110,.12)}
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .panel h2{margin:0;font-size:14.5px;font-weight:700}
+  .panel .note{font-size:11.5px;color:var(--muted)}
+  .chart-box{position:relative;height:270px}
+  .table-panel{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .table-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .table-head h2{margin:0;font-size:14.5px;font-weight:700}
+  .table-wrap{overflow:auto;max-height:660px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{
+    text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;
+    padding:10px 12px;border-bottom:1px solid var(--line);background:#f8fafc;position:sticky;top:0;z-index:1;white-space:nowrap;
+  }
+  tbody td{padding:11px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tbody tr:hover{background:#f8fafc}
+  tbody tr:last-child td{border-bottom:none}
+  .money{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .money small{font-weight:500;color:var(--muted);font-size:11px}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  .nowrap{white-space:nowrap}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#f1f5f9;color:#475569;white-space:nowrap}
+  .badge.after{background:#ecfdf5;color:#047857}
+  .badge.before{background:#f8fafc;color:#64748b}
+  .badge.annual{background:#eff6ff;color:#1d4ed8}
+  .badge.neg{background:#fef3c7;color:#92400e}
+  .badge.none{background:#f1f5f9;color:#94a3b8}
+  a.link{color:var(--brand);text-decoration:none;font-weight:600}
+  a.link:hover{text-decoration:underline}
+  .empty{padding:44px 20px;text-align:center;color:var(--muted)}
+  .empty strong{display:block;color:var(--text);margin-bottom:4px}
+  .upload-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    border:1.5px dashed #cbd5e1;background:#fbfdfd;border-radius:16px;padding:14px 16px;margin-bottom:16px;
+    transition:.15s;
+  }
+  .upload-bar.dragover{border-color:var(--brand);background:#f0fdfa}
+  .upload-text{font-size:12.5px;color:var(--muted);line-height:1.5}
+  .upload-text strong{color:var(--text)}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+    background:#0f172a;color:#fff;padding:12px 18px;border-radius:12px;font-size:13px;
+    box-shadow:0 10px 30px rgba(15,23,42,.25);opacity:0;pointer-events:none;transition:.25s;z-index:50;max-width:90vw;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.error{background:#b91c1c}
+  footer{border-top:1px solid var(--line);padding:18px 0 30px;color:var(--muted);font-size:12px}
+  .error-banner{display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px}
+  .error-banner.show{display:block}
+  @media (max-width:980px){
+    .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .charts{grid-template-columns:1fr}
+  }
+  @media (max-width:560px){
+    .cards{grid-template-columns:1fr}
+    .filters{grid-template-columns:1fr}
+    h1{font-size:18px}
+    .card .value{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">🩺</div>
+      <div>
+        <h1>메디게이트 급여 정리</h1>
+        <p class="sub">지역 · 진료과목별 의사 채용 급여 대시보드</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn ghost" id="refreshBtn" type="button">↻ 새로고침</button>
+      <button class="btn primary" id="uploadBtn" type="button">↑ CSV/JSON 업로드</button>
+      <input type="file" id="fileInput" accept=".csv,.json,text/csv,application/json" hidden>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="upload-bar" id="dropZone">
+    <div class="upload-text">
+      <strong>공고 CSV/JSON을 끌어다 놓거나 업로드하세요.</strong><br>
+      필수 열: <code>title</code>, <code>hospital</code> · 권장 열: <code>region</code>, <code>specialty</code>, <code>pay_text</code>, <code>url</code>, <code>posted_at</code>
+      (한글 열 이름도 인식: 제목·병원·지역·진료과·급여)
+    </div>
+    <button class="btn small" id="uploadBtn2" type="button">파일 선택</button>
+  </div>
+
+  <section class="cards">
+    <div class="card">
+      <div class="label">총 공고 수</div>
+      <div class="value" id="statCount">-<span class="unit">건</span></div>
+      <div class="hint" id="statCountHint">급여 확인 -건</div>
+    </div>
+    <div class="card">
+      <div class="label" id="avgLabel">월 환산 평균 급여</div>
+      <div class="value" id="statAvg">-<span class="unit">만원</span></div>
+      <div class="hint" id="statAvgHint">급여가 확인된 공고 기준</div>
+    </div>
+    <div class="card">
+      <div class="label" id="medianLabel">월 환산 중앙값</div>
+      <div class="value" id="statMedian">-<span class="unit">만원</span></div>
+      <div class="hint" id="statMedianHint">이상치에 덜 흔들리는 대표값</div>
+    </div>
+    <div class="card highlight">
+      <div class="label">최고 급여 지역 / 진료과</div>
+      <div class="value" id="statTop" style="font-size:19px">-</div>
+      <div class="hint" id="statTopHint">평균 급여 기준</div>
+    </div>
+  </section>
+
+  <section class="filters">
+    <div class="field">
+      <label for="sidoSelect">지역 (시/도)</label>
+      <select id="sidoSelect"><option value="">전체 지역</option></select>
+    </div>
+    <div class="field">
+      <label for="specialtySelect">진료과목</label>
+      <select id="specialtySelect"><option value="">전체 과목</option></select>
+    </div>
+    <div class="field">
+      <label for="taxSelect">세전/세후</label>
+      <select id="taxSelect">
+        <option value="all">전체</option>
+        <option value="after">세후·실수령</option>
+        <option value="before">세전</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="basisSelect">급여 기준</label>
+      <select id="basisSelect">
+        <option value="monthly">월 환산</option>
+        <option value="annual">연 환산</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="searchInput">검색 (병원·공고·급여)</label>
+      <input type="search" id="searchInput" placeholder="예: 강남, 피부과, 세후">
+    </div>
+    <div class="field" style="display:flex;gap:8px">
+      <div style="flex:1">
+        <label for="sortSelect">정렬</label>
+        <select id="sortSelect">
+          <option value="pay_desc">급여 높은순</option>
+          <option value="pay_asc">급여 낮은순</option>
+          <option value="recent">최근 등록순</option>
+          <option value="default">최신 입력순</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:flex-end">
+        <button class="btn small" id="resetBtn" type="button" title="필터 초기화">초기화</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="charts">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>진료과목별 평균 급여</h2>
+        <span class="note" id="specChartNote">상위 10개</span>
+      </div>
+      <div class="chart-box"><canvas id="specChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>지역별 평균 급여</h2>
+        <span class="note" id="sidoChartNote">공고 2건 이상</span>
+      </div>
+      <div class="chart-box"><canvas id="sidoChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="table-panel">
+    <div class="table-head">
+      <h2>공고 상세</h2>
+      <span class="note" id="tableNote">-</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>병원 / 공고</th>
+            <th>지역</th>
+            <th>진료과목</th>
+            <th>급여 표기</th>
+            <th>월 환산</th>
+            <th>구분</th>
+            <th>등록일</th>
+          </tr>
+        </thead>
+        <tbody id="jobsBody">
+          <tr><td colspan="7" class="empty">불러오는 중…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="wrap">
+  데모 데이터는 실제 공고가 아닌 예시입니다. 급여 표기는 공고 원문을 그대로 보여주고, 월 환산은 연봉을 12로 나눈 참고값입니다.
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const state = { sido: "", specialty: "", after_tax: "all", basis: "monthly", q: "", sort: "pay_desc" };
+  const charts = { spec: null, sido: null };
+  const MAX_ROWS = 300;
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => (n === null || n === undefined || Number.isNaN(n)) ? "-" : Math.round(n).toLocaleString("ko-KR");
+  const num1 = (n) => (n === null || n === undefined) ? "-" : (Math.round(n * 10) / 10).toLocaleString("ko-KR");
+  const esc = (s) => String(s === null || s === undefined ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  function toast(message, isError) {
+    const el = $("toast");
+    el.textContent = message;
+    el.classList.toggle("error", !!isError);
+    el.classList.add("show");
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => el.classList.remove("show"), 4200);
+  }
+
+  function showError(message) {
+    const el = $("errorBanner");
+    el.textContent = message;
+    el.classList.add("show");
+  }
+
+  function clearError() {
+    $("errorBanner").classList.remove("show");
+  }
+
+  function unitLabel() {
+    return state.basis === "annual" ? "만원/년" : "만원/월";
+  }
+
+  async function api(path) {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error("요청 실패 (" + res.status + "): " + path);
+    return res.json();
+  }
+
+  async function loadMeta() {
+    const meta = await api("/api/meta");
+    const sidoSelect = $("sidoSelect");
+    const specSelect = $("specialtySelect");
+
+    const currentSido = sidoSelect.value;
+    const currentSpec = specSelect.value;
+
+    sidoSelect.innerHTML = '<option value="">전체 지역</option>' +
+      meta.sidos.map((r) => `<option value="${esc(r.sido)}">${esc(r.sido)} (${r.count})</option>`).join("");
+    specSelect.innerHTML = '<option value="">전체 과목</option>' +
+      meta.specialties.map((r) => `<option value="${esc(r.specialty)}">${esc(r.specialty)} (${r.count})</option>`).join("");
+
+    if (meta.total === 0) {
+      showError("아직 공고가 없습니다. 위의 CSV/JSON 업로드로 공고를 추가해 주세요.");
+    } else {
+      clearError();
+    }
+    sidoSelect.value = currentSido;
+    specSelect.value = currentSpec;
+  }
+
+  function queryString() {
+    const params = new URLSearchParams();
+    if (state.sido) params.set("sido", state.sido);
+    if (state.specialty) params.set("specialty", state.specialty);
+    if (state.after_tax !== "all") params.set("after_tax", state.after_tax);
+    if (state.q) params.set("q", state.q);
+    return params;
+  }
+
+  function renderSummary(stats) {
+    const s = stats.summary || {};
+    $("statCount").innerHTML = fmt(s.job_count) + '<span class="unit">건</span>';
+    $("statCountHint").textContent = "급여 확인 " + fmt(s.pay_count) + "건";
+
+    $("statAvg").innerHTML = fmt(s.avg_manwon) + '<span class="unit">' + unitLabel() + '</span>';
+    $("statMedian").innerHTML = fmt(s.median_manwon) + '<span class="unit">' + unitLabel() + '</span>';
+    $("avgLabel").textContent = (state.basis === "annual" ? "연 환산" : "월 환산") + " 평균 급여";
+    $("medianLabel").textContent = (state.basis === "annual" ? "연 환산" : "월 환산") + " 중앙값";
+    $("statAvgHint").textContent = s.pay_count
+      ? "최소 " + fmt(s.min_manwon) + " ~ 최대 " + fmt(s.max_manwon) + "만원"
+      : "급여 표기가 있는 공고가 없습니다";
+
+    const bySido = (stats.by_sido || []).filter((r) => r.avg_manwon !== null);
+    const bySpec = (stats.by_specialty || []).filter((r) => r.avg_manwon !== null);
+    const topSido = bySido.slice().sort((a, b) => b.avg_manwon - a.avg_manwon)[0];
+    const topSpec = bySpec.slice().sort((a, b) => b.avg_manwon - a.avg_manwon)[0];
+
+    if (topSido || topSpec) {
+      $("statTop").textContent = topSido ? topSido.sido : "-";
+      $("statTopHint").textContent =
+        (topSido ? "평균 " + fmt(topSido.avg_manwon) + "만원" : "") +
+        (topSpec ? " · 최고 과목 " + topSpec.specialty + " " + fmt(topSpec.avg_manwon) + "만원" : "");
+    } else {
+      $("statTop").textContent = "-";
+      $("statTopHint").textContent = "급여 데이터가 더 필요합니다";
+    }
+  }
+
+  const CHART_COLORS = ["#0f766e", "#0d9488", "#14b8a6", "#2dd4bf", "#5eead4",
+                        "#0ea5e9", "#38bdf8", "#6366f1", "#8b5cf6", "#a78bfa"];
+
+  function drawBar(canvasId, chartKey, labels, values, horizontal) {
+    const canvas = $(canvasId);
+    if (!canvas) return;
+    if (charts[chartKey]) { charts[chartKey].destroy(); charts[chartKey] = null; }
+    if (!window.Chart) {
+      const box = canvas.parentElement;
+      box.innerHTML = '<div class="empty">차트 라이브러리(CDN)를 불러오지 못했습니다.<br>인터넷 연결을 확인하거나 표를 참고해 주세요.</div>';
+      return;
+    }
+    charts[chartKey] = new Chart(canvas.getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: unitLabel(),
+          data: values,
+          backgroundColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length] + "cc"),
+          borderColor: labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+          borderWidth: 1,
+          borderRadius: 6,
+          maxBarThickness: 42
+        }]
+      },
+      options: {
+        indexAxis: horizontal ? "y" : "x",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => " 평균 " + fmt(ctx.parsed[horizontal ? "x" : "y"]) + "만원"
+            }
+          }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            grid: { color: "#f1f5f9" },
+            ticks: { callback: (v) => fmt(v), font: { size: 11 }, color: "#64748b" }
+          },
+          y: {
+            beginAtZero: true,
+            grid: { color: "#f1f5f9" },
+            ticks: { callback: (v) => fmt(v), font: { size: 11 }, color: "#64748b" }
+          }
+        }
+      }
+    });
+  }
+
+  function renderCharts(stats) {
+    const specs = (stats.by_specialty || [])
+      .filter((r) => r.avg_manwon !== null && r.specialty !== "기타")
+      .sort((a, b) => b.avg_manwon - a.avg_manwon)
+      .slice(0, 10);
+    $("specChartNote").textContent = specs.length ? "상위 " + specs.length + "개 · 평균 기준" : "데이터 없음";
+    drawBar("specChart", "spec", specs.map((r) => r.specialty), specs.map((r) => r.avg_manwon), true);
+
+    const sidos = (stats.by_sido || [])
+      .filter((r) => r.avg_manwon !== null && r.sido && r.sido !== "미상" && r.job_count >= 1)
+      .sort((a, b) => b.avg_manwon - a.avg_manwon)
+      .slice(0, 10);
+    $("sidoChartNote").textContent = sidos.length ? "평균 급여 순 · 상위 " + sidos.length + "개" : "데이터 없음";
+    drawBar("sidoChart", "sido", sidos.map((r) => r.sido), sidos.map((r) => r.avg_manwon), false);
+  }
+
+  function payBadge(job) {
+    const badges = [];
+    if (job.pay_type === "협의" || job.monthly_manwon === null) {
+      badges.push('<span class="badge neg">협의/미정</span>');
+      return badges.join(" ");
+    }
+    if (job.pay_type === "연봉") badges.push('<span class="badge annual">연봉</span>');
+    const raw = job.pay_raw || "";
+    if (job.is_after_tax) {
+      badges.push('<span class="badge after">세후</span>');
+    } else if (/세전/.test(raw)) {
+      badges.push('<span class="badge before">세전</span>');
+    } else {
+      badges.push('<span class="badge none">세전 표기 없음</span>');
+    }
+    return badges.join(" ");
+  }
+
+  function renderJobs(data) {
+    const tbody = $("jobsBody");
+    const items = data.items || [];
+    $("tableNote").textContent = data.total > items.length
+      ? "총 " + fmt(data.total) + "건 중 " + fmt(items.length) + "건 표시"
+      : "총 " + fmt(data.total) + "건";
+
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty"><strong>조건에 맞는 공고가 없습니다.</strong>필터를 바꾸거나 CSV를 업로드해 보세요.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = items.map((job) => {
+      const place = [job.sido, job.sigungu].filter(Boolean).join(" ") || job.region_raw || "-";
+      const pay = job.pay_raw || "급여 미기재";
+      const monthly = job.monthly_manwon === null
+        ? '<span class="muted">-</span>'
+        : '<span class="money">' + num1(state.basis === "annual" ? job.monthly_manwon * 12 : job.monthly_manwon) +
+          '<small>만원</small></span>';
+      const hospLink = job.url
+        ? ` <a class="link small" href="${esc(job.url)}" target="_blank" rel="noopener noreferrer" style="margin-left:6px;font-weight:500;">공고 ↗</a>`
+        : "";
+      const title = job.url
+        ? `<a class="link" href="${esc(job.url)}" target="_blank" rel="noopener noreferrer">${esc(job.title || "(제목 없음)")}</a>`
+        : esc(job.title || "(제목 없음)");
+      return `<tr>
+        <td><div style="font-weight:600">${esc(job.hospital || "-")}${hospLink}</div><div class="small muted" style="max-width:320px">${title}</div></td>
+        <td class="nowrap">${esc(place)}</td>
+        <td class="nowrap">${esc(job.specialty || "기타")}${job.specialty_raw && job.specialty_raw !== job.specialty ? `<div class="small muted">${esc(job.specialty_raw)}</div>` : ""}</td>
+        <td>${esc(pay)}</td>
+        <td class="nowrap">${monthly}</td>
+        <td class="nowrap">${payBadge(job)}</td>
+        <td class="nowrap muted small">${esc(job.posted_at || "-")}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  async function refresh() {
+    const qs = queryString();
+    try {
+      clearError();
+      const statsQs = new URLSearchParams(qs);
+      statsQs.set("pay_basis", state.basis);
+      const jobsQs = new URLSearchParams(qs);
+      jobsQs.set("sort", state.sort);
+      jobsQs.set("limit", String(MAX_ROWS));
+
+      const [stats, jobs] = await Promise.all([
+        api("/api/stats?" + statsQs.toString()),
+        api("/api/jobs?" + jobsQs.toString())
+      ]);
+      renderSummary(stats);
+      renderCharts(stats);
+      renderJobs(jobs);
+    } catch (err) {
+      console.error(err);
+      showError("데이터를 불러오지 못했습니다: " + err.message + " — 서버(uvicorn)가 실행 중인지 확인해 주세요.");
+    }
+  }
+
+  function bindFilters() {
+    $("sidoSelect").addEventListener("change", (e) => { state.sido = e.target.value; refresh(); });
+    $("specialtySelect").addEventListener("change", (e) => { state.specialty = e.target.value; refresh(); });
+    $("taxSelect").addEventListener("change", (e) => { state.after_tax = e.target.value; refresh(); });
+    $("basisSelect").addEventListener("change", (e) => { state.basis = e.target.value; refresh(); });
+    $("sortSelect").addEventListener("change", (e) => { state.sort = e.target.value; refresh(); });
+
+    let timer = null;
+    $("searchInput").addEventListener("input", (e) => {
+      clearTimeout(timer);
+      const value = e.target.value.trim();
+      timer = setTimeout(() => { state.q = value; refresh(); }, 320);
+    });
+
+    $("resetBtn").addEventListener("click", () => {
+      state.sido = ""; state.specialty = ""; state.after_tax = "all";
+      state.q = ""; state.sort = "pay_desc"; state.basis = "monthly";
+      $("sidoSelect").value = ""; $("specialtySelect").value = "";
+      $("taxSelect").value = "all"; $("basisSelect").value = "monthly";
+      $("sortSelect").value = "pay_desc"; $("searchInput").value = "";
+      refresh();
+    });
+
+    $("refreshBtn").addEventListener("click", () => { loadMeta().catch(() => {}); refresh(); });
+  }
+
+  function bindUpload() {
+    const input = $("fileInput");
+    const open = () => input.click();
+    $("uploadBtn").addEventListener("click", open);
+    $("uploadBtn2").addEventListener("click", open);
+    input.addEventListener("change", () => {
+      if (input.files && input.files[0]) uploadFile(input.files[0]);
+      input.value = "";
+    });
+
+    const zone = $("dropZone");
+    ["dragenter", "dragover"].forEach((ev) => zone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); zone.classList.add("dragover");
+    }));
+    ["dragleave", "drop"].forEach((ev) => zone.addEventListener(ev, (e) => {
+      e.preventDefault(); e.stopPropagation(); zone.classList.remove("dragover");
+    }));
+    zone.addEventListener("drop", (e) => {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file) uploadFile(file);
+    });
+  }
+
+  async function uploadFile(file) {
+    if (!/\.(csv|json)$/i.test(file.name)) {
+      toast("CSV 또는 JSON 파일만 업로드할 수 있습니다.", true);
+      return;
+    }
+    const form = new FormData();
+    form.append("file", file);
+    toast("업로드 중… " + file.name);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || ("HTTP " + res.status));
+      toast(`완료: ${data.inserted}건 추가, ${data.skipped}건 중복/제외 (현재 총 ${data.total}건)`);
+      await loadMeta();
+      await refresh();
+    } catch (err) {
+      toast("업로드 실패: " + err.message, true);
+    }
+  }
+
+  function init() {
+    bindFilters();
+    bindUpload();
+    loadMeta().then(refresh).catch((err) => {
+      showError("서버에 연결하지 못했습니다: " + err.message);
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
+</script>
+</body>
+</html>
