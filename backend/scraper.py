@@ -616,10 +616,31 @@ def collect(
         end_page = start_page + pages - 1
         for page_no in range(start_page, end_page + 1):
             items: list[dict[str, Any]] = []
-            if captured_api:
+            api_used = False
+            direct_api_url = f"https://apis.medigate.net/w/recruit/list?pageNo={page_no}&pageSize=50"
+            try:
+                payload = page.evaluate(
+                    """async (url) => {
+                        const res = await fetch(url, { credentials: 'include' });
+                        if (!res.ok) return null;
+                        return await res.json();
+                    }""",
+                    direct_api_url,
+                )
+                if isinstance(payload, dict):
+                    items = _items_from_list_payload(payload)
+                    if items:
+                        api_used = True
+                        _log(f"[{page_no}/{end_page}] 목록 API에서 {len(items)}건 수신 (pageSize=50)")
+            except Exception as exc:
+                _log(f"[{page_no}/{end_page}] 직접 목록 API 호출 실패({exc})")
+
+            if not items and captured_api:
                 if page_no == 1:
                     items = _items_from_list_payload(captured_api["first_payload"])
-                    _log(f"[{page_no}/{end_page}] 목록 API에서 {len(items)}건 수신")
+                    if items:
+                        api_used = True
+                    _log(f"[{page_no}/{end_page}] 자동 감지 API에서 {len(items)}건 수신")
                 else:
                     req_url, req_method, req_body = _build_next_page_request(captured_api, page_no)
                     try:
@@ -638,7 +659,9 @@ def collect(
                         )
                         if isinstance(payload, dict):
                             items = _items_from_list_payload(payload)
-                            _log(f"[{page_no}/{end_page}] 목록 API에서 {len(items)}건 수신")
+                            if items:
+                                api_used = True
+                            _log(f"[{page_no}/{end_page}] 자동 감지 API에서 {len(items)}건 수신")
                     except Exception as exc:
                         _log(f"[{page_no}/{end_page}] 목록 API 호출 실패({exc}), 화면 추출로 전환")
 
@@ -684,7 +707,7 @@ def collect(
                 _log(f"최대 수집 건수({max_items})에 도달해 종료합니다.")
                 break
 
-            if captured_api and added_this_page > 0:
+            if api_used and added_this_page > 0:
                 time.sleep(0.5)
                 continue
 
