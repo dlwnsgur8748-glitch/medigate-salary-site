@@ -565,6 +565,15 @@ def collect(
             locale="ko-KR",
         )
         page = context.pages[0] if context.pages else context.new_page()
+        captured_headers: dict[str, str] = {}
+
+        def _on_request(req) -> None:
+            if "apis.medigate.net" not in req.url:
+                return
+            for k, v in (req.headers or {}).items():
+                kl = k.lower()
+                if kl in ("authorization", "x-auth-token", "x-access-token") and v:
+                    captured_headers[k] = v
 
         def _on_response(resp) -> None:
             if captured_api:
@@ -586,6 +595,7 @@ def collect(
             except Exception:
                 pass
 
+        page.on("request", _on_request)
         page.on("response", _on_response)
 
         _log(f"목록 페이지 여는 중: {LIST_URL}")
@@ -619,19 +629,29 @@ def collect(
             api_used = False
             direct_api_url = f"https://apis.medigate.net/w/recruit/list?pageNo={page_no}&pageSize=50"
             try:
-                payload = page.evaluate(
-                    """async (url) => {
-                        const res = await fetch(url, { credentials: 'include' });
-                        if (!res.ok) return null;
-                        return await res.json();
+                res_obj = page.evaluate(
+                    """async ({url, extraHeaders}) => {
+                        const headers = Object.assign({ 'Accept': 'application/json' }, extraHeaders || {});
+                        const res = await fetch(url, { credentials: 'include', headers });
+                        const text = await res.text();
+                        return { ok: res.ok, status: res.status, text };
                     }""",
-                    direct_api_url,
+                    {"url": direct_api_url, "extraHeaders": captured_headers},
                 )
-                if isinstance(payload, dict):
-                    items = _items_from_list_payload(payload)
-                    if items:
-                        api_used = True
-                        _log(f"[{page_no}/{end_page}] 목록 API에서 {len(items)}건 수신 (pageSize=50)")
+                if isinstance(res_obj, dict) and res_obj.get("ok"):
+                    import json as _json
+                    payload = _json.loads(res_obj.get("text") or "{}")
+                    if isinstance(payload, dict):
+                        items = _items_from_list_payload(payload)
+                        if items:
+                            api_used = True
+                            _log(f"[{page_no}/{end_page}] 목록 API에서 {len(items)}건 수신 (pageSize=50)")
+                        else:
+                            _log(f"[{page_no}/{end_page}] 목록 API 응답에 items 없음: {str(res_obj.get('text') or '')[:150]}")
+                else:
+                    status = res_obj.get("status") if isinstance(res_obj, dict) else "?"
+                    snippet = str((res_obj or {}).get("text") or "")[:150]
+                    _log(f"[{page_no}/{end_page}] 목록 API 응답 오류(status={status}): {snippet}")
             except Exception as exc:
                 _log(f"[{page_no}/{end_page}] 직접 목록 API 호출 실패({exc})")
 
